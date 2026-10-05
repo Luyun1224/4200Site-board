@@ -371,7 +371,13 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbykrPrN1PTCORzEnIRT17Jr
     flushing = true;
     const ops = queue.splice(0);
     try {
-      const d = await api({ action:'batch', ops });
+      let d;
+      try { d = await api({ action:'batch', ops }); }
+      catch (e) {
+        // 舊版 Apps Script 不支援 batch：改成逐筆送出
+        if (!String((e && e.message) || e).includes('batch')) throw e;
+        for (const op of ops) d = await api({ action:'write', coll:op.coll, id:op.id, data:op.data });
+      }
       if (!queue.length) apply(d);
       setSync('已儲存', true);
     } catch (e) {
